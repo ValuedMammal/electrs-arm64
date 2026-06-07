@@ -1,0 +1,107 @@
+# Builds a pre-compiled electrs binary (Blockstream fork, esplora_a33e97e1) for
+# aarch64-unknown-linux-gnu and uploads it as an asset to a dedicated release in
+# this repo. Run this once (or whenever the pinned electrs commit changes).
+# CI jobs then download the binary and set ELECTRS_EXE to avoid the x86-64
+# binary that electrsd's build.rs downloads automatically.
+#
+# Requires: Settings → Actions → Workflow permissions → "Read and write permissions"
+# (or use a fine-grained PAT with contents:write stored as RELEASE_TOKEN secret).
+
+name: Build electrs aarch64
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+env:
+  ELECTRS_COMMIT: a33e97e1a1fc63fa9c20a116bb92579bbf43b254
+  TARGET: aarch64-unknown-linux-gnu
+  # Asset is stored under this tag in the repo.
+  # The tag is created automatically if it doesn't exist.
+  RELEASE_TAG: electrs-bins
+
+jobs:
+  build-aarch64:
+    name: Cross-compile blockstream/electrs for aarch64
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out blockstream/electrs at pinned commit
+        uses: actions/checkout@v4
+        with:
+          repository: Blockstream/electrs
+          ref: ${{ env.ELECTRS_COMMIT }}
+          persist-credentials: false
+
+    #   # The repo's rust-toolchain.toml may pin an older channel that cross
+    #   # doesn't ship; replace it with stable to keep things predictable.
+    #   - name: Pin toolchain to stable
+    #     run: |
+    #       cat > rust-toolchain.toml <<'EOF'
+    #       [toolchain]
+    #       channel = "stable"
+    #       targets = ["aarch64-unknown-linux-gnu"]
+    #       EOF
+
+      # cross runs a Docker container for the target; pre-build installs the
+      # aarch64 libzmq headers that the zmq-sys crate needs to link against.
+      - name: Create Cross.toml
+        run: |
+          cat > Cross.toml <<'EOF'
+          [target.aarch64-unknown-linux-gnu]
+          pre-build = [
+            "dpkg --add-architecture arm64",
+            "apt-get update -qq",
+            "apt-get install -y libzmq3-dev:arm64",
+          ]
+          EOF
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          target: ${{ env.TARGET }}
+          cache: false  # cross builds inside Docker; host cache is not useful here
+
+      - name: Install cross
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cross
+
+      - name: Cross-compile
+        run: cross build --release --target ${{ env.TARGET }}
+
+      - name: Stage binary
+        run: |
+          mkdir dist
+          # Name matches electrsd's electrs_name() convention so it's easy to identify
+          cp target/${{ env.TARGET }}/release/electrs \
+             dist/electrs_linux_esplora_${{ env.ELECTRS_COMMIT }}
+
+      - name: Upload workflow artifact (90-day retention, useful for testing)
+        uses: actions/upload-artifact@v4
+        with:
+          name: electrs-aarch64
+          path: dist/
+          retention-days: 90
+
+      # Attach the binary as a persistent release asset so CI can always fetch it.
+      # softprops/action-gh-release creates the tag+release if absent and replaces
+      # an existing asset of the same name if present.
+      - name: Publish release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: "Pre-built electrs binaries (CI use)"
+          body: |
+            Pre-built electrs binaries for use in CI.
+
+            | Binary | Repo | Commit |
+            |--------|------|--------|
+            | `electrs_linux_esplora_${{ env.ELECTRS_COMMIT }}` | [Blockstream/electrs](https://github.com/Blockstream/electrs/tree/${{ env.ELECTRS_COMMIT }}) | `${{ env.ELECTRS_COMMIT }}` |
+
+            Set `ELECTRS_EXE` to the downloaded path to override electrsd's
+            auto-downloaded x86-64 binary on arm64 runners.
+          prerelease: true
+          files: dist/electrs_linux_esplora_${{ env.ELECTRS_COMMIT }}
