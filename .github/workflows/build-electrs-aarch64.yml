@@ -35,15 +35,15 @@ jobs:
           ref: ${{ env.ELECTRS_COMMIT }}
           persist-credentials: false
 
-    #   # The repo's rust-toolchain.toml may pin an older channel that cross
-    #   # doesn't ship; replace it with stable to keep things predictable.
-    #   - name: Pin toolchain to stable
-    #     run: |
-    #       cat > rust-toolchain.toml <<'EOF'
-    #       [toolchain]
-    #       channel = "stable"
-    #       targets = ["aarch64-unknown-linux-gnu"]
-    #       EOF
+      # The repo's rust-toolchain.toml may pin an older channel that cross
+      # doesn't ship; replace it with stable to keep things predictable.
+      - name: Pin toolchain to stable
+        run: |
+          cat > rust-toolchain.toml <<'EOF'
+          [toolchain]
+          channel = "stable"
+          targets = ["aarch64-unknown-linux-gnu"]
+          EOF
 
       # cross runs a Docker container for the target; pre-build installs the
       # aarch64 libzmq headers that the zmq-sys crate needs to link against.
