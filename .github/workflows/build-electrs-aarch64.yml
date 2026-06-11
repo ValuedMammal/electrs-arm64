@@ -58,7 +58,12 @@ jobs:
           ]
 
           [target.aarch64-unknown-linux-gnu.env]
-          passthrough = ["BINDGEN_EXTRA_CLANG_ARGS"]
+          passthrough = [
+            "BINDGEN_EXTRA_CLANG_ARGS",
+            "CXXFLAGS_aarch64_unknown_linux_gnu",
+            "PKG_CONFIG_ALLOW_CROSS",
+            "PKG_CONFIG_PATH",
+          ]
           EOF
 
       - name: Install Rust toolchain
@@ -75,13 +80,15 @@ jobs:
       - name: Cross-compile
         env:
           BINDGEN_EXTRA_CLANG_ARGS: "--target=aarch64-unknown-linux-gnu --sysroot=/usr/aarch64-linux-gnu"
-          CXXFLAGS: "-std=c++11"
+          CXXFLAGS_aarch64_unknown_linux_gnu: "-std=c++11"
+          PKG_CONFIG_ALLOW_CROSS: "1"
+          PKG_CONFIG_PATH: "/usr/lib/aarch64-linux-gnu/pkgconfig"
         run: cross build --release --target ${{ env.TARGET }}
 
       - name: Stage binary
         run: |
           mkdir dist
-          # Name matches electrsd's electrs_name() convention so it's easy to identify
+          # Name matches electrsd's name convention so it's easy to identify
           cp target/${{ env.TARGET }}/release/electrs \
              dist/electrs_linux_esplora_${{ env.ELECTRS_COMMIT }}
 
