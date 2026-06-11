@@ -54,9 +54,9 @@ jobs:
           pre-build = [
             "dpkg --add-architecture arm64",
             "apt-get update -qq",
-            "apt-get install -y --no-install-recommends ca-certificates wget gnupg",
+            "apt-get install -y --no-install-recommends ca-certificates wget gnupg apt-transport-https",
             "wget -qO - https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor > /etc/apt/trusted.gpg.d/llvm-snapshot.gpg",
-            "echo 'deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-11 main' > /etc/apt/sources.list.d/llvm-11.list",
+            ". /etc/os-release && echo \"deb http://apt.llvm.org/${VERSION_CODENAME}/ llvm-toolchain-${VERSION_CODENAME}-11 main\" > /etc/apt/sources.list.d/llvm-11.list",
             "apt-get update -qq",
             "apt-get install -y libzmq3-dev:arm64 clang-11 libclang-11-dev",
           ]
