@@ -55,8 +55,8 @@ jobs:
             "dpkg --add-architecture arm64",
             "apt-get update -qq",
             "apt-get install -y --no-install-recommends ca-certificates wget gnupg",
-            "wget -qO - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -",
-            "echo 'deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-11 main' >> /etc/apt/sources.list",
+            "wget -qO - https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor > /etc/apt/trusted.gpg.d/llvm-snapshot.gpg",
+            "echo 'deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-11 main' > /etc/apt/sources.list.d/llvm-11.list",
             "apt-get update -qq",
             "apt-get install -y libzmq3-dev:arm64 clang-11 libclang-11-dev",
           ]
