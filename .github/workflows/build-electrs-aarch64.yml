@@ -55,6 +55,7 @@ jobs:
             "dpkg --add-architecture arm64",
             "apt-get update -qq",
             "apt-get install -y --no-install-recommends ca-certificates wget gnupg apt-transport-https",
+            "apt-get install -y g++-9-aarch64-linux-gnu",
             "wget -qO - https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor > /etc/apt/trusted.gpg.d/llvm-snapshot.gpg",
             ". /etc/os-release && echo \"deb http://apt.llvm.org/${VERSION_CODENAME}/ llvm-toolchain-${VERSION_CODENAME}-11 main\" > /etc/apt/sources.list.d/llvm-11.list",
             "apt-get update -qq",
@@ -62,9 +63,9 @@ jobs:
           ]
 
           [target.aarch64-unknown-linux-gnu.env]
+          set = { CXX_aarch64_unknown_linux_gnu = "aarch64-linux-gnu-g++-9", CXXFLAGS_aarch64_unknown_linux_gnu = "-std=c++17" }
           passthrough = [
             "BINDGEN_EXTRA_CLANG_ARGS",
-            "CXXFLAGS_aarch64_unknown_linux_gnu",
             "PKG_CONFIG_ALLOW_CROSS",
             "PKG_CONFIG_PATH",
             "LIBCLANG_PATH",
@@ -82,10 +83,12 @@ jobs:
         with:
           tool: cross
 
+      - name: Check cross container g++ version
+        run: cross run --target ${{ env.TARGET }} -- aarch64-linux-gnu-g++ --version
+
       - name: Cross-compile
         env:
           BINDGEN_EXTRA_CLANG_ARGS: "--target=aarch64-unknown-linux-gnu --sysroot=/usr/aarch64-linux-gnu"
-          CXXFLAGS_aarch64_unknown_linux_gnu: "-std=c++17"
           PKG_CONFIG_ALLOW_CROSS: "1"
           PKG_CONFIG_PATH: "/usr/lib/aarch64-linux-gnu/pkgconfig"
           LIBCLANG_PATH: "/usr/lib/llvm-11/lib"
