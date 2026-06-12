@@ -63,9 +63,9 @@ jobs:
           ]
 
           [target.aarch64-unknown-linux-gnu.env]
-          set = { CXX_aarch64_unknown_linux_gnu = "aarch64-linux-gnu-g++-9", CXXFLAGS_aarch64_unknown_linux_gnu = "-std=c++17" }
           passthrough = [
             "BINDGEN_EXTRA_CLANG_ARGS",
+            "CXXFLAGS_aarch64_unknown_linux_gnu",
             "PKG_CONFIG_ALLOW_CROSS",
             "PKG_CONFIG_PATH",
             "LIBCLANG_PATH",
@@ -83,11 +83,10 @@ jobs:
         with:
           tool: cross
 
-      - name: Check cross container g++ version
-        run: cross run --target ${{ env.TARGET }} -- aarch64-linux-gnu-g++ --version
-
       - name: Cross-compile
         env:
+          CROSS_CONTAINER_OPTS: "--env CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++-9"
+          CXXFLAGS_aarch64_unknown_linux_gnu: "-std=c++17"
           BINDGEN_EXTRA_CLANG_ARGS: "--target=aarch64-unknown-linux-gnu --sysroot=/usr/aarch64-linux-gnu"
           PKG_CONFIG_ALLOW_CROSS: "1"
           PKG_CONFIG_PATH: "/usr/lib/aarch64-linux-gnu/pkgconfig"
