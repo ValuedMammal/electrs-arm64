@@ -75,7 +75,7 @@ jobs:
           mkdir dist
           # Name matches electrsd's name convention so it's easy to identify
           cp target/${{ env.TARGET }}/release/electrs \
-             dist/electrs_linux_esplora_${{ env.ELECTRS_COMMIT }}
+             dist/electrs_aarch64_linux_esplora_${{ env.ELECTRS_COMMIT }}
 
       # - name: Upload workflow artifact (90-day retention, useful for testing)
       #   uses: actions/upload-artifact@v4
@@ -97,9 +97,9 @@ jobs:
 
             | Binary | Repo | Commit |
             |--------|------|--------|
-            | `electrs_linux_esplora_${{ env.ELECTRS_COMMIT }}` | [Blockstream/electrs](https://github.com/Blockstream/electrs/tree/${{ env.ELECTRS_COMMIT }}) | `${{ env.ELECTRS_COMMIT }}` |
+            | `electrs_aarch64_linux_esplora_${{ env.ELECTRS_COMMIT }}` | [Blockstream/electrs](https://github.com/Blockstream/electrs/tree/${{ env.ELECTRS_COMMIT }}) | `${{ env.ELECTRS_COMMIT }}` |
 
             Set `ELECTRS_EXE` to the downloaded path to override electrsd's
             auto-downloaded x86-64 binary on arm64 runners.
           prerelease: true
-          files: dist/electrs_linux_esplora_${{ env.ELECTRS_COMMIT }}
+          files: dist/electrs_aarch64_linux_esplora_${{ env.ELECTRS_COMMIT }}
