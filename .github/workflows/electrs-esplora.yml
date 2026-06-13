@@ -1,16 +1,13 @@
-# Builds a pre-compiled electrs binary (Blockstream fork, esplora) for
-# aarch64-unknown-linux-gnu and uploads it as an asset to a dedicated release in
-# this repo. Run this once (or whenever the pinned electrs commit changes).
-# CI jobs then download the binary and set ELECTRS_EXE to avoid the x86-64
-# binary that electrsd's build.rs downloads automatically.
-#
-# Uses the same native cargo cross-compilation approach as electrs-aarch64.yml
-# (no `cross` / Docker), extended with libzmq3-dev:arm64 for the zmq-sys crate.
+# Builds a pre-compiled electrs binary (Blockstream/esplora fork) for
+# linux/aarch64 and uploads it as a release asset in this repo. Run this once
+# (or whenever the pinned electrs commit changes). CI jobs then download the
+# binary and set ELECTRS_EXE to avoid the x86-64 binary that electrsd's
+# build.rs downloads automatically.
 #
 # Requires: Settings → Actions → Workflow permissions → "Read and write permissions"
-# (or use a fine-grained PAT with contents:write stored as RELEASE_TOKEN secret).
+# (or a fine-grained PAT with contents:write stored as RELEASE_TOKEN secret).
 
-name: Build blockstream/electrs aarch64
+name: Build electrs (esplora) aarch64
 
 on:
   workflow_dispatch: {}
@@ -20,15 +17,12 @@ permissions:
 
 env:
   ELECTRS_COMMIT: 027e38d3ebc2f85b28ae76f8f3448438ee4fc7b1
-  TARGET: aarch64-unknown-linux-gnu
-  # Asset is stored under this tag in the repo.
-  # The tag is created automatically if it doesn't exist.
   RELEASE_TAG: electrs-bins
 
 jobs:
   build-aarch64:
-    name: Cross-compile blockstream/electrs for aarch64
-    runs-on: ubuntu-latest
+    name: Build blockstream/electrs
+    runs-on: ubuntu-24.04-arm
 
     steps:
       - name: Check out blockstream/electrs at pinned commit
@@ -45,44 +39,27 @@ jobs:
           cat > rust-toolchain.toml <<'EOF'
           [toolchain]
           channel = "stable"
-          targets = ["aarch64-unknown-linux-gnu"]
           EOF
 
-      # Same approach as romanz/electrs, plus libzmq3-dev for zmq-sys headers.
-      - name: Install cross-compilation dependencies
+      - name: Install build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             build-essential \
             libclang-dev \
-            gcc-aarch64-linux-gnu \
-            g++-aarch64-linux-gnu \
             libzmq3-dev
 
-      - name: Install Rust toolchain and aarch64 target
+      - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          target: ${{ env.TARGET }}
 
-      - name: Cross-compile
-        env:
-          BINDGEN_EXTRA_CLANG_ARGS: "-target aarch64-linux-gnu"
-          RUSTFLAGS: "-C linker=aarch64-linux-gnu-gcc"
-        run: cargo build --locked --release --target ${{ env.TARGET }}
+      - name: Build
+        run: cargo build --locked --release
 
       - name: Stage binary
         run: |
           mkdir dist
-          # Name matches electrsd's name convention so it's easy to identify
-          cp target/${{ env.TARGET }}/release/electrs \
+          cp target/release/electrs \
              dist/electrs_aarch64_linux_esplora_${{ env.ELECTRS_COMMIT }}
-
-      # - name: Upload workflow artifact (90-day retention, useful for testing)
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: electrs-aarch64
-      #     path: dist/
-      #     retention-days: 90
 
       # Attach the binary as a persistent release asset so CI can always fetch it.
       # softprops/action-gh-release creates the tag+release if absent and replaces
