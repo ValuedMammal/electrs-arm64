@@ -7,7 +7,7 @@
 # Requires: Settings → Actions → Workflow permissions → "Read and write permissions"
 # (or use a fine-grained PAT with contents:write stored as RELEASE_TOKEN secret).
 
-name: Build electrs aarch64
+name: Build blockstream/electrs aarch64
 
 on:
   workflow_dispatch: {}
