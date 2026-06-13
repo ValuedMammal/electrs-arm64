@@ -1,18 +1,24 @@
-# Test cross-compiling romanz/electrs for aarch64-unknown-linux-gnu using the
-# approach documented in doc/install.md: native cargo build with a system
-# cross-compiler and rocksdb statically linked (the default).
+# Builds a pre-compiled romanz/electrs binary for aarch64-unknown-linux-gnu and
+# uploads it as an asset to a dedicated release in this repo.
 #
-# No `cross` / Docker needed — just install the aarch64 toolchain on the host,
-# add the aarch64 Rust target, and invoke cargo with the appropriate env vars.
+# Uses the native cargo cross-compilation approach from doc/install.md — no
+# `cross` / Docker needed.
+#
+# Requires: Settings → Actions → Workflow permissions → "Read and write permissions"
+# (or a fine-grained PAT with contents:write stored as RELEASE_TOKEN secret).
 
 name: Build electrs aarch64
 
 on:
   workflow_dispatch: {}
 
+permissions:
+  contents: write
+
 env:
   ELECTRS_COMMIT: 35216c6d30148be8e6763d913d437330f431fc03
   TARGET: aarch64-unknown-linux-gnu
+  RELEASE_TAG: electrs-bins
 
 jobs:
   build-aarch64:
@@ -53,3 +59,35 @@ jobs:
           BINDGEN_EXTRA_CLANG_ARGS: "-target aarch64-linux-gnu"
           RUSTFLAGS: "-C linker=aarch64-linux-gnu-gcc"
         run: cargo build --locked --release --target ${{ env.TARGET }}
+
+      - name: Stage binary
+        run: |
+          mkdir dist
+          cp target/${{ env.TARGET }}/release/electrs \
+             dist/electrs_aarch64_linux_${{ env.ELECTRS_COMMIT }}
+
+      - name: Upload workflow artifact (90-day retention)
+        uses: actions/upload-artifact@v4
+        with:
+          name: electrs-aarch64
+          path: dist/
+          retention-days: 90
+
+      # softprops/action-gh-release creates the tag+release if absent and
+      # replaces an existing asset of the same name if present.
+      - name: Publish release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: "Pre-built electrs binaries (CI use)"
+          body: |
+            Pre-built electrs binaries for use in CI.
+
+            | Binary | Repo | Commit |
+            |--------|------|--------|
+            | `electrs_aarch64_linux_${{ env.ELECTRS_COMMIT }}` | [romanz/electrs](https://github.com/romanz/electrs/tree/${{ env.ELECTRS_COMMIT }}) | `${{ env.ELECTRS_COMMIT }}` |
+
+            Set `ELECTRS_EXE` to the downloaded path to override electrsd's
+            auto-downloaded x86-64 binary on arm64 runners.
+          prerelease: true
+          files: dist/electrs_aarch64_linux_${{ env.ELECTRS_COMMIT }}
