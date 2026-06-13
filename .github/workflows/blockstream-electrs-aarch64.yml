@@ -1,8 +1,11 @@
-# Builds a pre-compiled electrs binary (Blockstream fork, esplora_a33e97e1) for
+# Builds a pre-compiled electrs binary (Blockstream fork, esplora) for
 # aarch64-unknown-linux-gnu and uploads it as an asset to a dedicated release in
 # this repo. Run this once (or whenever the pinned electrs commit changes).
 # CI jobs then download the binary and set ELECTRS_EXE to avoid the x86-64
 # binary that electrsd's build.rs downloads automatically.
+#
+# Uses the same native cargo cross-compilation approach as electrs-aarch64.yml
+# (no `cross` / Docker), extended with libzmq3-dev:arm64 for the zmq-sys crate.
 #
 # Requires: Settings → Actions → Workflow permissions → "Read and write permissions"
 # (or use a fine-grained PAT with contents:write stored as RELEASE_TOKEN secret).
@@ -35,8 +38,8 @@ jobs:
           ref: ${{ env.ELECTRS_COMMIT }}
           persist-credentials: false
 
-      # The repo's rust-toolchain.toml may pin an older channel that cross
-      # doesn't ship; replace it with stable to keep things predictable.
+      # The repo's rust-toolchain.toml may pin an older channel; replace it
+      # with stable to keep things predictable.
       - name: Pin toolchain to stable
         run: |
           cat > rust-toolchain.toml <<'EOF'
@@ -45,84 +48,58 @@ jobs:
           targets = ["aarch64-unknown-linux-gnu"]
           EOF
 
-      # cross runs a Docker container for the target; pre-build installs the
-      # aarch64 libzmq headers that the zmq-sys crate needs to link against.
-      - name: Create Cross.toml
+      # Same approach as romanz/electrs, plus libzmq3-dev for zmq-sys headers.
+      - name: Install cross-compilation dependencies
         run: |
-          cat > Cross.toml <<'EOF'
-          [target.aarch64-unknown-linux-gnu]
-          pre-build = [
-            "dpkg --add-architecture arm64",
-            "apt-get update -qq",
-            "apt-get install -y --no-install-recommends ca-certificates wget gnupg apt-transport-https",
-            "apt-get install -y g++-9-aarch64-linux-gnu",
-            "wget -qO - https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor > /etc/apt/trusted.gpg.d/llvm-snapshot.gpg",
-            ". /etc/os-release && echo \"deb http://apt.llvm.org/${VERSION_CODENAME}/ llvm-toolchain-${VERSION_CODENAME}-11 main\" > /etc/apt/sources.list.d/llvm-11.list",
-            "apt-get update -qq",
-            "apt-get install -y libzmq3-dev:arm64 clang-11 libclang-11-dev",
-          ]
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            libclang-dev \
+            gcc-aarch64-linux-gnu \
+            g++-aarch64-linux-gnu \
+            libzmq3-dev
 
-          [target.aarch64-unknown-linux-gnu.env]
-          passthrough = [
-            "BINDGEN_EXTRA_CLANG_ARGS",
-            "CXXFLAGS_aarch64_unknown_linux_gnu",
-            "PKG_CONFIG_ALLOW_CROSS",
-            "PKG_CONFIG_PATH",
-            "LIBCLANG_PATH",
-          ]
-          EOF
-
-      - name: Install Rust toolchain
+      - name: Install Rust toolchain and aarch64 target
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           target: ${{ env.TARGET }}
-          cache: false  # cross builds inside Docker; host cache is not useful here
-
-      - name: Install cross
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cross
 
       - name: Cross-compile
         env:
-          CROSS_CONTAINER_OPTS: "--env CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++-9"
-          CXXFLAGS_aarch64_unknown_linux_gnu: "-std=c++17"
-          BINDGEN_EXTRA_CLANG_ARGS: "--target=aarch64-unknown-linux-gnu --sysroot=/usr/aarch64-linux-gnu"
-          PKG_CONFIG_ALLOW_CROSS: "1"
-          PKG_CONFIG_PATH: "/usr/lib/aarch64-linux-gnu/pkgconfig"
-          LIBCLANG_PATH: "/usr/lib/llvm-11/lib"
-        run: cross build --release --target ${{ env.TARGET }}
+          BINDGEN_EXTRA_CLANG_ARGS: "-target aarch64-linux-gnu"
+          RUSTFLAGS: "-C linker=aarch64-linux-gnu-gcc"
+        run: cargo build --locked --release --target ${{ env.TARGET }}
 
-      - name: Stage binary
-        run: |
-          mkdir dist
-          # Name matches electrsd's name convention so it's easy to identify
-          cp target/${{ env.TARGET }}/release/electrs \
-             dist/electrs_linux_esplora_${{ env.ELECTRS_COMMIT }}
+      # - name: Stage binary
+      #   run: |
+      #     mkdir dist
+      #     # Name matches electrsd's name convention so it's easy to identify
+      #     cp target/${{ env.TARGET }}/release/electrs \
+      #        dist/electrs_linux_esplora_${{ env.ELECTRS_COMMIT }}
 
-      - name: Upload workflow artifact (90-day retention, useful for testing)
-        uses: actions/upload-artifact@v4
-        with:
-          name: electrs-aarch64
-          path: dist/
-          retention-days: 90
+      # - name: Upload workflow artifact (90-day retention, useful for testing)
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: electrs-aarch64
+      #     path: dist/
+      #     retention-days: 90
 
-      # Attach the binary as a persistent release asset so CI can always fetch it.
-      # softprops/action-gh-release creates the tag+release if absent and replaces
-      # an existing asset of the same name if present.
-      - name: Publish release asset
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ env.RELEASE_TAG }}
-          name: "Pre-built electrs binaries (CI use)"
-          body: |
-            Pre-built electrs binaries for use in CI.
+      # # Attach the binary as a persistent release asset so CI can always fetch it.
+      # # softprops/action-gh-release creates the tag+release if absent and replaces
+      # # an existing asset of the same name if present.
+      # - name: Publish release asset
+      #   uses: softprops/action-gh-release@v2
+      #   with:
+      #     tag_name: ${{ env.RELEASE_TAG }}
+      #     name: "Pre-built electrs binaries (CI use)"
+      #     body: |
+      #       Pre-built electrs binaries for use in CI.
 
-            | Binary | Repo | Commit |
-            |--------|------|--------|
-            | `electrs_linux_esplora_${{ env.ELECTRS_COMMIT }}` | [Blockstream/electrs](https://github.com/Blockstream/electrs/tree/${{ env.ELECTRS_COMMIT }}) | `${{ env.ELECTRS_COMMIT }}` |
+      #       | Binary | Repo | Commit |
+      #       |--------|------|--------|
+      #       | `electrs_linux_esplora_${{ env.ELECTRS_COMMIT }}` | [Blockstream/electrs](https://github.com/Blockstream/electrs/tree/${{ env.ELECTRS_COMMIT }}) | `${{ env.ELECTRS_COMMIT }}` |
 
-            Set `ELECTRS_EXE` to the downloaded path to override electrsd's
-            auto-downloaded x86-64 binary on arm64 runners.
-          prerelease: true
-          files: dist/electrs_linux_esplora_${{ env.ELECTRS_COMMIT }}
+      #       Set `ELECTRS_EXE` to the downloaded path to override electrsd's
+      #       auto-downloaded x86-64 binary on arm64 runners.
+      #     prerelease: true
+      #     files: dist/electrs_linux_esplora_${{ env.ELECTRS_COMMIT }}
