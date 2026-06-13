@@ -33,14 +33,12 @@ jobs:
       # rust-rocksdb's bindgen step on the host).
       - name: Install cross-compilation dependencies
         run: |
-          sudo dpkg --add-architecture arm64
           sudo apt-get update
           sudo apt-get install -y \
             build-essential \
             libclang-dev \
             gcc-aarch64-linux-gnu \
-            g++-aarch64-linux-gnu \
-            libc6-dev:arm64
+            g++-aarch64-linux-gnu
 
       - name: Install Rust toolchain and aarch64 target
         uses: actions-rust-lang/setup-rust-toolchain@v1
