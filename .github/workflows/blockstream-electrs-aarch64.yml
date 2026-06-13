@@ -70,12 +70,12 @@ jobs:
           RUSTFLAGS: "-C linker=aarch64-linux-gnu-gcc"
         run: cargo build --locked --release --target ${{ env.TARGET }}
 
-      # - name: Stage binary
-      #   run: |
-      #     mkdir dist
-      #     # Name matches electrsd's name convention so it's easy to identify
-      #     cp target/${{ env.TARGET }}/release/electrs \
-      #        dist/electrs_linux_esplora_${{ env.ELECTRS_COMMIT }}
+      - name: Stage binary
+        run: |
+          mkdir dist
+          # Name matches electrsd's name convention so it's easy to identify
+          cp target/${{ env.TARGET }}/release/electrs \
+             dist/electrs_linux_esplora_${{ env.ELECTRS_COMMIT }}
 
       # - name: Upload workflow artifact (90-day retention, useful for testing)
       #   uses: actions/upload-artifact@v4
@@ -84,22 +84,22 @@ jobs:
       #     path: dist/
       #     retention-days: 90
 
-      # # Attach the binary as a persistent release asset so CI can always fetch it.
-      # # softprops/action-gh-release creates the tag+release if absent and replaces
-      # # an existing asset of the same name if present.
-      # - name: Publish release asset
-      #   uses: softprops/action-gh-release@v2
-      #   with:
-      #     tag_name: ${{ env.RELEASE_TAG }}
-      #     name: "Pre-built electrs binaries (CI use)"
-      #     body: |
-      #       Pre-built electrs binaries for use in CI.
+      # Attach the binary as a persistent release asset so CI can always fetch it.
+      # softprops/action-gh-release creates the tag+release if absent and replaces
+      # an existing asset of the same name if present.
+      - name: Publish release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: "Pre-built electrs binaries (CI use)"
+          body: |
+            Pre-built electrs binaries for use in CI.
 
-      #       | Binary | Repo | Commit |
-      #       |--------|------|--------|
-      #       | `electrs_linux_esplora_${{ env.ELECTRS_COMMIT }}` | [Blockstream/electrs](https://github.com/Blockstream/electrs/tree/${{ env.ELECTRS_COMMIT }}) | `${{ env.ELECTRS_COMMIT }}` |
+            | Binary | Repo | Commit |
+            |--------|------|--------|
+            | `electrs_linux_esplora_${{ env.ELECTRS_COMMIT }}` | [Blockstream/electrs](https://github.com/Blockstream/electrs/tree/${{ env.ELECTRS_COMMIT }}) | `${{ env.ELECTRS_COMMIT }}` |
 
-      #       Set `ELECTRS_EXE` to the downloaded path to override electrsd's
-      #       auto-downloaded x86-64 binary on arm64 runners.
-      #     prerelease: true
-      #     files: dist/electrs_linux_esplora_${{ env.ELECTRS_COMMIT }}
+            Set `ELECTRS_EXE` to the downloaded path to override electrsd's
+            auto-downloaded x86-64 binary on arm64 runners.
+          prerelease: true
+          files: dist/electrs_linux_esplora_${{ env.ELECTRS_COMMIT }}
