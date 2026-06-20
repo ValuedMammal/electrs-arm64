@@ -22,3 +22,23 @@ is triggered manually via `workflow_dispatch`. It:
 
 To update the pinned commit, change `ELECTRS_COMMIT` in the workflow file and
 re-run the workflow.
+
+## Using the release asset in CI
+
+The release asset is a zip archive. Download and extract it before setting
+`ELECTRS_EXE`:
+
+```yaml
+- name: Download electrs (arm64)
+  env:
+    ELECTRS_COMMIT: 027e38d3ebc2f85b28ae76f8f3448438ee4fc7b1
+  run: |
+    curl -L -o electrs.zip \
+      https://github.com/ValuedMammal/electrs-arm64/releases/download/electrs-bins/electrs_aarch64_linux_esplora_${ELECTRS_COMMIT}.zip
+    unzip electrs.zip
+    echo "ELECTRS_EXE=$PWD/electrs" >> "$GITHUB_ENV"
+    echo "ELECTRSD_SKIP_DOWNLOAD=1" >> "$GITHUB_ENV"
+```
+
+`ELECTRSD_SKIP_DOWNLOAD=1` tells electrsd's `build.rs` not to attempt its own
+download, and `ELECTRS_EXE` points it at the extracted binary.
