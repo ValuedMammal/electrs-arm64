@@ -32,15 +32,6 @@ jobs:
           ref: ${{ env.ELECTRS_COMMIT }}
           persist-credentials: false
 
-      # The repo's rust-toolchain.toml may pin an older channel; replace it
-      # with stable to keep things predictable.
-      - name: Pin toolchain to stable
-        run: |
-          cat > rust-toolchain.toml <<'EOF'
-          [toolchain]
-          channel = "stable"
-          EOF
-
       - name: Install build dependencies
         run: |
           sudo apt-get update
