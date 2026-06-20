@@ -6,9 +6,9 @@ runner, then stages the binary as a release asset in this repo.
 
 ## Purpose
 
-[electrsd](https://github.com/RCasatta/electrsd)'s `build.rs` downloads an
-x86-64 electrs binary at build time, which doesn't work on arm64 runners. CI
-workflows that run on arm64 can instead download the pre-built binary from this
+[electrsd](https://github.com/rust-bitcoin/corepc/tree/master/electrsd)'s `build.rs`
+downloads an x86-64 electrs binary at build time, which doesn't work on arm64 runners.
+CI workflows that run on arm64 can instead download the pre-built binary from this
 repo's releases and point `ELECTRS_EXE` at it.
 
 ## Workflow
