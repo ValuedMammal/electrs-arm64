@@ -49,8 +49,10 @@ jobs:
       - name: Stage binary
         run: |
           mkdir dist
-          cp target/release/electrs \
-             dist/electrs_aarch64_linux_esplora_${{ env.ELECTRS_COMMIT }}
+          cp target/release/electrs dist/electrs
+          cd dist
+          zip electrs_aarch64_linux_esplora_${{ env.ELECTRS_COMMIT }}.zip electrs
+          rm electrs
 
       # Attach the binary as a persistent release asset so CI can always fetch it.
       # softprops/action-gh-release creates the tag+release if absent and replaces
@@ -65,9 +67,9 @@ jobs:
 
             | Binary | Repo | Commit |
             |--------|------|--------|
-            | `electrs_aarch64_linux_esplora_${{ env.ELECTRS_COMMIT }}` | [Blockstream/electrs](https://github.com/Blockstream/electrs/tree/${{ env.ELECTRS_COMMIT }}) | `${{ env.ELECTRS_COMMIT }}` |
+            | `electrs_aarch64_linux_esplora_${{ env.ELECTRS_COMMIT }}.zip` | [Blockstream/electrs](https://github.com/Blockstream/electrs/tree/${{ env.ELECTRS_COMMIT }}) | `${{ env.ELECTRS_COMMIT }}` |
 
-            Set `ELECTRS_EXE` to the downloaded path to override electrsd's
-            auto-downloaded x86-64 binary on arm64 runners.
+            Set `ELECTRS_EXE` to the path of the extracted binary to override
+            electrsd's auto-downloaded x86-64 binary on arm64 runners.
           prerelease: true
-          files: dist/electrs_aarch64_linux_esplora_${{ env.ELECTRS_COMMIT }}
+          files: dist/electrs_aarch64_linux_esplora_${{ env.ELECTRS_COMMIT }}.zip
